@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Utilities for the River Herring workshop"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["opencv-python", "ultralytics", "supervision"]
+dependencies = ["opencv-python", "ultralytics", "supervision", "lapx>=0.5.8"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
