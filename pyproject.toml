@@ -7,7 +7,7 @@ name = "FIsheyeTutorial"
 version = "0.1.0"
 description = "Utilities for the River Herring workshop"
 readme = "README.md"
-requires-python = ">=12.00"
+requires-python = ">=3.12"
 dependencies = ["opencv-python", "ultralytics", "supervision"]
 
 [tool.setuptools.packages.find]
