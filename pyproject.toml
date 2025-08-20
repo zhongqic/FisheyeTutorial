@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fisheye-tutorial"
+version = "0.1.0"
+description = "Utilities for the River Herring workshop"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name="Your Name", email="you@example.com"}]
+dependencies = ["opencv-python", "ultralytics", "supervision"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
