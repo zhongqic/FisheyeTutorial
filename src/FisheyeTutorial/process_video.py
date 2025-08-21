@@ -14,6 +14,7 @@ import io
 import base64
 from IPython.display import display, HTML
 from IPython.display import DisplayHandle
+import torch
 
 
 # Colab-friendly display helpers
@@ -32,14 +33,15 @@ def ensure_dirs(out_dir: Path):
     non_rh_dir.mkdir(parents=True, exist_ok=True)
     return rh_dir, non_rh_dir
 
-def init_line_counter(frame_width: int, frame_height: int, line_pos=0.5):
+def init_line_counter(frame_width: int, frame_height: int, line_pos=0.5，
+                     move_right: str = "Up", move_left: str = "Down"):
     # define the start and end of the line
     start = sv.Point(int(frame_width * line_pos), -250)
     end   = sv.Point(int(frame_width * line_pos), frame_height)
     line_counter = sv.LineZone(start=start, end=end, triggering_anchors=[sv.Position.CENTER])
     line_annot   = sv.LineZoneAnnotator(
         thickness=1, text_thickness=1, text_scale=0.6,
-        custom_in_text="Up", custom_out_text="Down",
+        custom_in_text = move_right, custom_out_text = move_left,
         display_in_count = False, display_out_count = False
     )
     box_annot = sv.BoxAnnotator(thickness=1)
@@ -97,21 +99,20 @@ class _FrameDisplayer:
         """Optional: call between runs to clear pacing state."""
         self._last_t = None
 
-# ----- Convenience wrapper that matches your original signature -----
 # Create one global displayer you can reuse across cells/runs.
 try:
     _GLOBAL_DISPLAY
 except NameError:
     _GLOBAL_DISPLAY = _FrameDisplayer(target_fps=15, scale=0.75, jpeg_quality=85)
 
-def _show_frame(frame_bgr, line_counter, scale=0.75, fps=None, target_fps=20):
+def _show_frame(frame_bgr, line_counter, scale=0.75, fps=None, target_fps=20，move_right: str = "Up", move_left: str = "Down"):
     """Display using a robust DisplayHandle with pacing."""
     # Keep global displayer in sync with desired settings
     _GLOBAL_DISPLAY.scale = scale
     _GLOBAL_DISPLAY.target_fps = target_fps
     _GLOBAL_DISPLAY._min_dt = 1.0 / max(1, target_fps)
 
-    hud = f"Up: {line_counter.in_count}   Down: {line_counter.out_count}"
+    hud = f"{move_right}: {line_counter.in_count}   {move_left}: {line_counter.out_count}"
     if fps is not None:
         hud += f"   FPS: {fps:.1f}"
 
@@ -136,7 +137,8 @@ def process_video(
     out_dir.mkdir(parents=True, exist_ok=True)
     rh_dir, non_rh_dir = ensure_dirs(out_dir)
 
-    model = YOLO(weights).to("cuda")
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model = YOLO(weights).to(device)
 
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
@@ -144,7 +146,7 @@ def process_video(
 
     frame_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    line_counter, line_annot, box_annot = init_line_counter(frame_w, frame_h, line_pos)
+    line_counter, line_annot, box_annot = init_line_counter(frame_w, frame_h, line_pos, move_right, move_left)
 
     conf_hist, time_hist, pos_hist, size_hist = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
     events = []
@@ -173,13 +175,15 @@ def process_video(
         if r0.boxes is None or r0.boxes.xywh is None:
             # Optionally still display the raw frame
             if show and frame_idx % show_every == 0:
-                _show_frame(frame_annot, line_counter, scale=display_scale, fps=fps_smooth)
+                _show_frame(frame_annot, line_counter, scale=display_scale, fps=fps_smooth，
+                           move_right=move_right, move_left=move_left)
             continue
 
         det = sv.Detections.from_ultralytics(r0)
         if r0.boxes.id is None:
             if show and frame_idx % show_every == 0:
-                _show_frame(frame, line_counter, scale=display_scale, fps=fps_smooth)
+                _show_frame(frame, line_counter, scale=display_scale, fps=fps_smooth，
+                           move_right=move_right, move_left=move_left)
             continue
         det.track_id = r0.boxes.id.cpu().numpy().astype(int)
 
@@ -224,8 +228,8 @@ def process_video(
                 out_subdir = rh_dir if cls == class_id else non_rh_dir
                 cv2.imwrite(str(out_subdir / f"{tid}_{cls}_{label}_{frame_idx}.png"), frame_annot)
 
-        add_events(crossed_in, "in")
-        add_events(crossed_out, "out")
+        add_events(crossed_in, move_right)
+        add_events(crossed_out, move_left)
 
         # Simple FPS estimate (EMA)
         dt = max(1e-6, t_infer1 - t_infer0)
@@ -234,7 +238,8 @@ def process_video(
 
         # Show preview occasionally
         if show and (frame_idx % show_every == 0):
-            _show_frame(frame_annot, line_counter, scale=display_scale, fps=fps_smooth)
+            _show_frame(frame_annot, line_counter, scale=display_scale, fps=fps_smooth，
+                       move_right=move_right, move_left=move_left)
 
     cap.release()
 
