@@ -58,6 +58,8 @@ def _show_frame(frame_bgr, line_counter, scale=0.75, fps=None):
         from IPython.display import clear_output as _clear
         _clear(wait=True)
         cv2_imshow(overlay)
+        # 1 ms so GUI can repaint, but not long enough to flicker
+        cv2.waitKey(1)
     else:
         # Fallback for non-Colab notebooks
         from IPython.display import clear_output as _clear, display
