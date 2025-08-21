@@ -105,7 +105,7 @@ try:
 except NameError:
     _GLOBAL_DISPLAY = _FrameDisplayer(target_fps=15, scale=0.75, jpeg_quality=85)
 
-def _show_frame(frame_bgr, line_counter, scale=0.75, fps=None, target_fps=20，move_right: str = "Up", move_left: str = "Down"):
+def _show_frame(frame_bgr, line_counter, scale=0.75, fps=None, target_fps=20, move_right: str = "Up", move_left: str = "Down"):
     """Display using a robust DisplayHandle with pacing."""
     # Keep global displayer in sync with desired settings
     _GLOBAL_DISPLAY.scale = scale
@@ -175,14 +175,14 @@ def process_video(
         if r0.boxes is None or r0.boxes.xywh is None:
             # Optionally still display the raw frame
             if show and frame_idx % show_every == 0:
-                _show_frame(frame_annot, line_counter, scale=display_scale, fps=fps_smooth，
+                _show_frame(frame_annot, line_counter, scale=display_scale, fps=fps_smooth,
                            move_right=move_right, move_left=move_left)
             continue
 
         det = sv.Detections.from_ultralytics(r0)
         if r0.boxes.id is None:
             if show and frame_idx % show_every == 0:
-                _show_frame(frame, line_counter, scale=display_scale, fps=fps_smooth，
+                _show_frame(frame, line_counter, scale=display_scale, fps=fps_smooth,
                            move_right=move_right, move_left=move_left)
             continue
         det.track_id = r0.boxes.id.cpu().numpy().astype(int)
@@ -238,7 +238,7 @@ def process_video(
 
         # Show preview occasionally
         if show and (frame_idx % show_every == 0):
-            _show_frame(frame_annot, line_counter, scale=display_scale, fps=fps_smooth，
+            _show_frame(frame_annot, line_counter, scale=display_scale, fps=fps_smooth,
                        move_right=move_right, move_left=move_left)
 
     cap.release()
