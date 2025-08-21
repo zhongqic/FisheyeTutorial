@@ -134,6 +134,10 @@ def process_video(
     move_left: str = "Down"
 ):
 
+    # Reset the global displayer for fresh runs
+    _GLOBAL_DISPLAY.handle = None
+    _GLOBAL_DISPLAY.reset()
+    
     video_path = Path(video_path)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
