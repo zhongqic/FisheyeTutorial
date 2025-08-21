@@ -217,7 +217,7 @@ def process_video(
             pos_hist[tid].append((float(x), float(y)))
             size_hist[tid].append((float(w), float(h)))
 
-        def add_events(mask, label):
+        def add_events(mask, direction):
             idxs = np.where(mask)[0]
             for j in idxs:
                 tid = int(det_f.tracker_id[j])
@@ -227,12 +227,12 @@ def process_video(
                     "frame": frame_idx,
                     "time": str(timedelta(seconds=t_now)),
                     "track_id": tid,
-                    "species": cls,
-                    "label": label,
+                    "species": model.names[cls],
+                    "direction": direction,
                     "confidence": conf
                 })
                 out_subdir = rh_dir if cls == class_id else non_rh_dir
-                cv2.imwrite(str(out_subdir / f"{tid}_{cls}_{label}_{frame_idx}.png"), frame_annot)
+                cv2.imwrite(str(out_subdir / f"{tid}_{cls}_{direction}_{frame_idx}.png"), frame_annot)
 
         add_events(crossed_in, move_right)
         add_events(crossed_out, move_left)
