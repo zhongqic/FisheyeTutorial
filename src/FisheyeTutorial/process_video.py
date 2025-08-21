@@ -130,6 +130,8 @@ def process_video(
     show: bool = False,
     show_every: int = 3,
     display_scale: float = 0.75,
+    move_right: str = "Up",
+    move_left: str = "Down"
 ):
 
     video_path = Path(video_path)
