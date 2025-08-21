@@ -33,8 +33,8 @@ def ensure_dirs(out_dir: Path):
     non_rh_dir.mkdir(parents=True, exist_ok=True)
     return rh_dir, non_rh_dir
 
-def init_line_counter(frame_width: int, frame_height: int, line_pos=0.5，
-                     move_right: str = "Up", move_left: str = "Down"):
+def init_line_counter(frame_width: int, frame_height: int, line_pos=0.5,
+                      move_right: str = "Up", move_left: str = "Down"):
     # define the start and end of the line
     start = sv.Point(int(frame_width * line_pos), -250)
     end   = sv.Point(int(frame_width * line_pos), frame_height)
