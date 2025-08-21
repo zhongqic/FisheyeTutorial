@@ -8,6 +8,12 @@ import supervision as sv
 from pathlib import Path
 from collections import defaultdict
 from datetime import timedelta, datetime
+from PIL import Image
+import time
+import io
+import base64
+from IPython.display import display, HTML
+from IPython.display import DisplayHandle
 
 
 # Colab-friendly display helpers
@@ -39,34 +45,77 @@ def init_line_counter(frame_width: int, frame_height: int, line_pos=0.5):
     box_annot = sv.BoxAnnotator(thickness=1)
     return line_counter, line_annot, box_annot
 
-def _show_frame(frame_bgr, line_counter, scale=0.75, fps=None):
-    """Display a frame in Colab (or Jupyter fallback)."""
-    overlay = frame_bgr.copy()
+class _FrameDisplayer:
+    """Robust in-notebook image displayer with FPS pacing."""
+    def __init__(self, target_fps=15, scale=0.75, jpeg_quality=85):
+        self.target_fps = target_fps
+        self.scale = scale
+        self.jpeg_quality = jpeg_quality
+        self.handle = None
+        self._last_t = None
+        self._min_dt = 1.0 / max(1, target_fps)
 
-    # add up and down counts
-    # HUD text: counts + fps
+    def _ensure_handle(self):
+        if self.handle is None:
+            # Create a container so we can update it without flicker
+            self.handle = display(HTML('<div id="video-container"></div>'), display_id=True)
+
+    def _pace(self):
+        now = time.perf_counter()
+        if self._last_t is not None:
+            dt = now - self._last_t
+            if dt < self._min_dt:
+                time.sleep(self._min_dt - dt)
+        self._last_t = time.perf_counter()
+
+    def show(self, frame_bgr, hud_text=None):
+        # Pace output
+        self._pace()
+
+        overlay = frame_bgr
+        if self.scale != 1.0:
+            overlay = cv2.resize(overlay, None, fx=self.scale, fy=self.scale)
+
+        if hud_text:
+            cv2.putText(overlay, hud_text, (10, 24), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7, (255, 0, 0), 2, cv2.LINE_AA)
+
+        # BGR -> RGB -> JPEG (base64)
+        rgb = cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB)
+        pil_img = Image.fromarray(rgb)
+        buf = io.BytesIO()
+        pil_img.save(buf, format="JPEG", quality=self.jpeg_quality)
+        b64 = base64.b64encode(buf.getvalue()).decode()
+
+        self._ensure_handle()
+        # Update the existing display with a new <img>; this survives interrupts/re-runs
+        self.handle.update(HTML(
+            f'<img src="data:image/jpeg;base64,{b64}" style="max-width:100%;height:auto;">'
+        ))
+
+    def reset(self):
+        """Optional: call between runs to clear pacing state."""
+        self._last_t = None
+
+# ----- Convenience wrapper that matches your original signature -----
+# Create one global displayer you can reuse across cells/runs.
+try:
+    _GLOBAL_DISPLAY
+except NameError:
+    _GLOBAL_DISPLAY = _FrameDisplayer(target_fps=15, scale=0.75, jpeg_quality=85)
+
+def _show_frame(frame_bgr, line_counter, scale=0.75, fps=None, target_fps=20):
+    """Display using a robust DisplayHandle with pacing."""
+    # Keep global displayer in sync with desired settings
+    _GLOBAL_DISPLAY.scale = scale
+    _GLOBAL_DISPLAY.target_fps = target_fps
+    _GLOBAL_DISPLAY._min_dt = 1.0 / max(1, target_fps)
+
     hud = f"Up: {line_counter.in_count}   Down: {line_counter.out_count}"
     if fps is not None:
         hud += f"   FPS: {fps:.1f}"
-    # (255, 0, 0) gives text color
-    cv2.putText(overlay, hud, (10, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2, cv2.LINE_AA)
 
-    if scale != 1.0:
-        overlay = cv2.resize(overlay, None, fx=scale, fy=scale)
-
-    if HAS_COLAB_IMSHOW:
-        from IPython.display import clear_output as _clear
-        _clear(wait=True)
-        cv2_imshow(overlay)
-        # 1 ms so GUI can repaint, but not long enough to flicker
-        cv2.waitKey(5)
-    else:
-        # Fallback for non-Colab notebooks
-        from IPython.display import clear_output as _clear, display
-        from PIL import Image
-        _clear(wait=True)
-        rgb = cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB)
-        display(Image.fromarray(rgb))
+    _GLOBAL_DISPLAY.show(frame_bgr, hud_text=hud)
 
 def process_video(
     video_path: str,
