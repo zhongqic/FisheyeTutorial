@@ -1,4 +1,4 @@
-def draw_yolo_boxes(image_path, label_path, class_names=None):
+def show_annotation(image_path, label_path, class_names=None):
     # Displays a particular image with its YOLO format annotations
   
     img = cv2.imread(image_path)
